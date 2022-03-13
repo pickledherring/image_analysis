@@ -169,7 +169,7 @@ def quantizer(img, num_levels):
         new_img.append([])
         for j in range(len(img[i])):
             for k in range(num_levels):
-                if img[i][j] < bins[k]:
+                if img[i][j] <= bins[k]:
                     new_img[i].append((k + .5) * dQ)
                     msqe += (img[i][j] - new_img[i][j])**2
                     break
@@ -262,9 +262,9 @@ def med_linear_filter(img, weights):
 
     return new_img
 
-def batch_process(folder, funcs, abbr=None, save_loc=None):
+def batch_process(folder, funcs, abbr=None, save_loc=None, verbose=False):
     # funcs should be a tuple or list like:
-    # [[func1, {param1:arg1, param2:arg2}], [func2, {param1:arg1}]
+    # [[func1, {param1:arg1, param2:arg2}], [func2, {param1:arg1}]]
     # where paramaters are anything besides "img" or "folder"
     
     # abbr can be:
@@ -283,23 +283,42 @@ def batch_process(folder, funcs, abbr=None, save_loc=None):
         files = glob.glob(f"{folder}/*")
 
     start = time.perf_counter()
+    num = 0
     sum_msqe = 0
+    bin_list = []
+    count_list = []
     # open and grayscale each file
     for file in files:
+        num += 1
         pix_list = open_in_gray(file)
         for func in funcs:
-            if func[0] != quantizer:
-                pix_list = func[0](pix_list, **(func[1]))
-            else:
+            if func[0] == quantizer:
                 pix_list, msqe = func[0](pix_list, **(func[1]))
                 sum_msqe += msqe
-        to_image(pix_list, save_loc=save_loc)
+            elif func[0] == hist:
+                bins, counts = func[0](pix_list, **(func[1]))
+                bin_list.append(bins)
+                count_list.append(counts)
+            else:
+                pix_list = func[0](pix_list, **(func[1]))
+        if save_loc:
+            to_image(pix_list, save_loc=f"{save_loc}/out{num}.png")
+        else:
+            to_image(pix_list)
 
-    # statistics
-    end = time.perf_counter()
-    batch = end - start
-    ind = batch / len(files)
-    out_string = f"batch time: {batch}\naverage individual time: {ind}"
-    if quantizer in [func[0] for func in funcs]:
-        out_string += f"\n mean of msqe: {sum_msqe/len(files)}"
-    print(out_string)
+    if verbose:
+        # statistics
+        end = time.perf_counter()
+        batch = end - start
+        ind = batch / len(files)
+        out_string = f"batch time: {batch}\naverage individual time: {ind}"
+        if quantizer in [func[0] for func in funcs]:
+            out_string += f"\n mean of msqe: {sum_msqe/len(files)}"
+    
+        print(out_string)
+    
+    if save_loc:
+        if hist in [func[0] for func in funcs]:
+            with open(f"{save_loc}/hist_bins_and_counts.txt", "a") as file:
+                file.write(f"bins: {bin_list}\n")
+                file.write(f"counts: {count_list}\n")

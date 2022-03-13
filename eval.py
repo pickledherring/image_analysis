@@ -12,17 +12,18 @@ blurring = [[1, 4, 6, 4, 1],
             [4, 16, 24, 16, 4],
             [1, 4, 6, 4, 1]]
 
-funcs = [[[salt_n_pepper, {"prob": .05}], "salt and pepper noise addition"]]
-            # [[gaussian_noise, {"mu": 0, "sigma": 20}], "gaussian noise addition"],
-            # [[], "grayscale alone"],
-            # [[hist, {}], "histogram"],
-            # [[hist_eq, {}], "histogram equalization"],
-            # [[frequency_capper, {"max_freq": 200}], "frequency capping"],
-            # [[avg_linear_filter, {"weights": blurring}], "average linear filter"],
-            # [[med_linear_filter, {"weights": blurring}], "median linear filter"]]
+funcs_list = [#[[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
+            #[[[gaussian_noise, {"mu": 0, "sigma": 20}]], "gaussian noise addition"],
+            [[], "grayscale alone"],
+            [[[hist, {}]], "histogram"],
+            [[[hist_eq, {}]], "histogram equalization"],
+            [[[quantizer, {"num_levels": 20}]], "quantizing"],
+            [[[avg_linear_filter, {"weights": blurring}]], "average linear filter"],
+            [[[med_linear_filter, {"weights": blurring}]], "median linear filter"]]
 
-for func in funcs:
-    batch, ind = batch_process("Cancerous cell smears", [func[0]])
+for func in funcs_list:
+    print(func[1], ":")
+    batch_process("Cancerous cell smears", func[0], verbose=True)
 
 types = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
 start = time.perf_counter()
