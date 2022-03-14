@@ -6,4 +6,4 @@ For an easier interface, there is run_me.py. Follow the intructions therein, sav
 
 You will also need glob, matplotlib, and PIL, which can be installed by running `pip3 install -r requirements.txt` in a terminal window, assuming you already have python 3.
 
-eval.py is there to time every function and will take hours to run.
+eval.py is there to time every function and will take hours to run. This is partially because it opens and saves every image. For timing on just one transformation, you can subtract the time to run "grayscale alone" from the other function. Note that this will be very imprecise.

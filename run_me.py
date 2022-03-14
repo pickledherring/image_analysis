@@ -1,10 +1,13 @@
 from main import *
 
+##### EDIT BELOW #####
 file_location = "Cancerous cell smears"
-output_folder = None
+output_folder = "output"
 functions = [[hist_eq, {}], [quantizer, {"num_levels": 20}]]
 verbose = True
 abbr = "inter"
+##### EDIT ABOVE #####
+
 
 batch_process(file_location, functions, abbr=abbr,
                 save_loc=output_folder, verbose=verbose)
@@ -20,6 +23,7 @@ blur = [[1, 4, 6, 4, 1],
 # and output location, verbose, and abbr if desired.
 
 # Use "None" for output location if you don't want the outputs saved.
+# You must create the output folder before saving to it.
 
 # verbose can be "True" or "False" if you want statistics.
 

@@ -302,7 +302,7 @@ def batch_process(folder, funcs, abbr=None, save_loc=None, verbose=False):
             else:
                 pix_list = func[0](pix_list, **(func[1]))
         if save_loc:
-            to_image(pix_list, save_loc=f"{save_loc}/out{num}.png")
+            to_image(pix_list, save_loc=f"{save_loc}/out{num}.bmp")
         else:
             to_image(pix_list)
 

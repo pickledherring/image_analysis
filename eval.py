@@ -12,8 +12,8 @@ blurring = [[1, 4, 6, 4, 1],
             [4, 16, 24, 16, 4],
             [1, 4, 6, 4, 1]]
 
-funcs_list = [#[[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
-            #[[[gaussian_noise, {"mu": 0, "sigma": 20}]], "gaussian noise addition"],
+funcs_list = [[[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
+            [[[gaussian_noise, {"mu": 0, "sigma": 20}]], "gaussian noise addition"],
             [[], "grayscale alone"],
             [[[hist, {}]], "histogram"],
             [[[hist_eq, {}]], "histogram equalization"],
