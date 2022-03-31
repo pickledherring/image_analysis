@@ -26,7 +26,7 @@ def salt_n_pepper(img, prob):
                 new_img[i].append(img[i][j])
     return new_img
     
-def gaussian_noise(img, mu = 0, sigma = 1):
+def gaussian_noise(img, mu=0, sigma=1):
     new_img = []
     for i in range(len(img)):
         new_img.append([])
@@ -81,7 +81,7 @@ def to_image(pix_list, save_loc=None):
     return output
 
 # Histogram calculation for each individual image
-def hist(img, bins = 255):
+def hist(img, bins=255):
     bin_divs = []
     counts = []
     for i in range(1, bins + 1):
@@ -116,7 +116,7 @@ def plot_hist(bin_divs, counts, title=None):
 
 # Averaged histograms of pixel values for each class of images
 # hist_avg_class can be run independently of open_in_gray as it runs it internally
-def hist_avg_class(folder, abbr, bins = 255):
+def hist_avg_class(folder, abbr, bins=255):
     # abbr can be:
     # "cyl": columnar epithelial?
     # "para": parabasal squamous epithelial
@@ -222,43 +222,43 @@ def ext_bounds(img, length, width, mask_size):
 def avg_linear_filter(img, weights):
     length = len(img)
     width = len(img[0])
-    mask_size = math.floor(len(weights) / 2)
-    ext_img = ext_bounds(img, length, width, mask_size)
+    mask_radius = math.floor(len(weights) / 2)
+    ext_img = ext_bounds(img, length, width, mask_radius)
 
     sum_weights = 0
     for i in range(len(weights)):
         sum_weights += sum(weights[i])
     # apply filter
     new_img = []
-    for i in range(len(img)):
+    for i in range(mask_radius, length + mask_radius):
         new_img.append([])
-        for j in range(len(img[i])):
+        for j in range(mask_radius, width + mask_radius):
             summed = 0
             for k in range(len(weights)):
                 for m in range(len(weights[k])):
-                    summed += ext_img[i-mask_size+k][j-mask_size+m] *\
+                    summed += ext_img[i-mask_radius+k][j-mask_radius+m] *\
                     weights[k][m]
-            new_img[i].append(summed / sum_weights)
+            new_img[i-mask_radius].append(summed / sum_weights)
 
     return new_img
 
 def med_linear_filter(img, weights):
     length = len(img)
     width = len(img[0])
-    mask_size = math.floor(len(weights) / 2)
-    ext_img = ext_bounds(img, length, width, mask_size)
+    mask_radius = math.floor(len(weights) / 2)
+    ext_img = ext_bounds(img, length, width, mask_radius)
 
     # apply filter
     new_img = []
-    for i in range(len(img)):
+    for i in range(mask_radius, length + mask_radius):
         new_img.append([])
-        for j in range(len(img[i])):
+        for j in range(mask_radius, width + mask_radius):
             products = []
             for k in range(len(weights)):
                 for m in range(len(weights[k])):
-                    products.append(ext_img[i-mask_size+k][j-mask_size+m] *\
-                    weights[k][m])
-            new_img[i].append(st.median(products))
+                    for _ in range(weights[k][m]):
+                        products.append(ext_img[i-mask_radius+k][j-mask_radius+m])
+            new_img[i-mask_radius].append(st.median(products))
 
     return new_img
 
