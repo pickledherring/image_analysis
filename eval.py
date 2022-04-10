@@ -6,28 +6,44 @@
 import time
 from main import *
 
-blurring = [[1, 4, 6, 4, 1],
-            [4, 16, 24, 16, 4],
-            [6, 24, 36, 24, 6],
-            [4, 16, 24, 16, 4],
-            [1, 4, 6, 4, 1]]
+dilate_erode_weights = [[1, 1, 1],
+                        [1, 1, 1],
+                        [1, 1, 1]]
 
-funcs_list = [[[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
-            [[[gaussian_noise, {"mu": 0, "sigma": 20}]], "gaussian noise addition"],
-            [[], "grayscale alone"],
-            [[[hist, {}]], "histogram"],
-            [[[hist_eq, {}]], "histogram equalization"],
-            [[[quantizer, {"num_levels": 20}]], "quantizing"],
-            [[[avg_linear_filter, {"weights": blurring}]], "average linear filter"],
-            [[[med_linear_filter, {"weights": blurring}]], "median linear filter"]]
+funcs_list = [
+    [[[edge_operator, {}]], "edge operator"],
+    [[[hist_thresh, {}]], "histogram thresholding"],
+    [[[dilate, {"weights": dilate_erode_weights}]], "dilation"],
+    [[[erode, {"weights": dilate_erode_weights}]], "erosion"],
+    [[[k_means_quantize, {"k": 2}]], "K-means on intensity, k = 2"],
+    [[[k_means_quantize, {"k": 3}]], "K-means on intensity, k = 3"],
+    [[[k_means_quantize, {"k": 4}]], "K-means on intensity, k = 4"],
+    [[[k_means_quantize, {"k": 5}]], "K-means on intensity, k = 5"],
+    [[[k_means_quantize, {"k": 6}]], "K-means on intensity, k = 6"],
+    [[[k_means_dist, {"k": 2}]], "K-means with distance, k = 2"],
+    [[[k_means_dist, {"k": 3}]], "K-means with distance, k = 3"],
+    [[[k_means_dist, {"k": 4}]], "K-means with distance, k = 4"],
+    [[[k_means_dist, {"k": 5}]], "K-means with distance, k = 5"],
+    [[[k_means_dist, {"k": 6}]], "K-means with distance, k = 6"],
+    [[[dbscan, {}]], "DBSCAN"]
+    ]
+
+# [[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
+# [[[gaussian_noise, {"mu": 0, "sigma": 20}]], "gaussian noise addition"],
+# [[], "grayscale alone"],
+# [[[hist, {}]], "histogram"],
+# [[[hist_eq, {}]], "histogram equalization"],
+# [[[quantizer, {"num_levels": 20}]], "quantizing"],
+# [[[avg_linear_filter, {"weights": blurring}]], "average linear filter"],
+# [[[med_linear_filter, {"weights": blurring}]], "median linear filter"]
 
 for func in funcs_list:
     print(func[1], ":")
     batch_process("Cancerous cell smears", func[0], verbose=True)
 
-types = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
-start = time.perf_counter()
-for type in types:
-    hist_avg_class("Cancerous cell smears", abbr=type)
-end = time.perf_counter()
-print("histogram average by class, for all classes: ", end - start)
+# types = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
+# start = time.perf_counter()
+# for type in types:
+#     hist_avg_class("Cancerous cell smears", abbr=type)
+# end = time.perf_counter()
+# print("histogram average by class, for all classes: ", end - start)

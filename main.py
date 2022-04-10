@@ -4,9 +4,14 @@ import math
 import statistics as st
 import random
 import time
+from numpy import arange
 from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+gauss_3x3 = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]
+gauss_5x5 = [[1, 4, 7, 4, 1], [4, 16, 26, 16, 4], [7, 26, 41, 26, 7],
+            [4, 16, 26, 16, 4], [1, 4, 7, 4, 1]]
 
 # Noise addition functions: 
 # * Salt and pepper noise of user-specified strength 
@@ -177,9 +182,12 @@ def quantizer(img, num_levels):
 
     return new_img, msqe
 
-# Filtering operations: 
+# Filtering operations:
+# *ext_bounds helps the linear filters by extending the image past
+#  its edges using a wraparound.
 # *Linear filter with user-specified mask size and pixel weights
 # *Median filter with user-specified mask size and pixel weights
+# Gaussian 3x3 and 5x5 filters already created for easy use!
 def ext_bounds(img, length, width, mask_size):
     # works well when there is no border
     new_img = []
@@ -219,15 +227,23 @@ def ext_bounds(img, length, width, mask_size):
 
     return new_img
 
-def avg_linear_filter(img, weights):
+def avg_linear_filter(img, weights=gauss_5x5, sum_weights=0):
     length = len(img)
     width = len(img[0])
     mask_radius = math.floor(len(weights) / 2)
     ext_img = ext_bounds(img, length, width, mask_radius)
 
-    sum_weights = 0
-    for i in range(len(weights)):
-        sum_weights += sum(weights[i])
+    # sum_weights can be changed from 0 for an edge detector or other
+    # filter where the sum would equal 0 and cause zero division error.
+    # Otherwise, the function will figure it out, below.
+    if sum_weights == 0:
+        for i in range(len(weights)):
+            sum_weights += sum(weights[i])
+        
+        if sum_weights == 0:
+            print("please supply a non-zero sum_weights for this filter,\
+            maybe the sum of their absolute values.")
+    
     # apply filter
     new_img = []
     for i in range(mask_radius, length + mask_radius):
@@ -242,7 +258,7 @@ def avg_linear_filter(img, weights):
 
     return new_img
 
-def med_linear_filter(img, weights):
+def med_linear_filter(img, weights=gauss_5x5):
     length = len(img)
     width = len(img[0])
     mask_radius = math.floor(len(weights) / 2)
@@ -322,3 +338,325 @@ def batch_process(folder, funcs, abbr=None, save_loc=None, verbose=False):
             with open(f"{save_loc}/hist_bins_and_counts.txt", "a") as file:
                 file.write(f"bins: {bin_list}\n")
                 file.write(f"counts: {count_list}\n")
+
+# Finds the edges in an image. Default can be kinda dark, so set
+# sharpen_thresh=<numeric> to return a binary image with everything
+# above sharpen_thresh = 255 and everything else = 0.
+def edge_operator(img, type="Jahne", sharpen_thresh=0):
+    new_img_x = []
+    new_img_y = []
+    if type == "Prewitt":
+        x_mask = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]]
+        y_mask = [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]
+        new_img_x = avg_linear_filter(img, weights=x_mask, sum_weights=6)
+        new_img_y = avg_linear_filter(img, weights=y_mask, sum_weights=6)
+    elif type == "Sobel":
+        x_mask = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
+        y_mask = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+        new_img_x = avg_linear_filter(img, weights=x_mask, sum_weights=8)
+        new_img_y = avg_linear_filter(img, weights=y_mask, sum_weights=8)
+    elif type == "Jahne":
+        x_mask = [[-3, 0, 3], [-10, 0, 10], [-3, 0, 3]]
+        y_mask = [[-3, -10, -3], [0, 0, 0], [3, 10, 3]]
+        new_img_x = avg_linear_filter(img, weights=x_mask, sum_weights=32)
+        new_img_y = avg_linear_filter(img, weights=y_mask, sum_weights=32)
+
+    length = len(new_img_y)
+    width = len(new_img_y[0])
+    new_img = []
+    for i in range(length):
+        new_img.append([])
+        for j in range(width):
+            grad = math.sqrt(new_img_x[i][j]**2 + new_img_y[i][j]**2)
+            if sharpen_thresh > 0:
+                if grad > sharpen_thresh:
+                    new_img[i].append(255)
+                else:
+                    new_img[i].append(0)
+            else:
+                new_img[i].append(grad)
+    return new_img
+
+# Also returns a binary image, but finds the threshold that minimizes
+# within-group variance of the two sides.
+def hist_thresh(img):
+    bins, counts = hist(img)
+    num_pix = sum(counts)
+    within_group_vars = []
+
+    for thresh in range(2, 255):
+        obj_prior = sum(counts[:thresh]) / num_pix
+        back_prior = sum(counts[thresh:]) / num_pix
+
+        if obj_prior != 0:
+            obj_mean = (sum([i * counts[i] for i in range(thresh)]) / num_pix)\
+                / obj_prior
+            obj_var = sum([(i - obj_mean)**2 * counts[i] for i in range(thresh)])\
+                / (num_pix * obj_prior)
+        else:
+            obj_var = 0
+        
+        if back_prior != 0:
+            back_mean = (sum([i * counts[i] for i in range(thresh, 255)]) / num_pix)\
+                / back_prior
+            back_var = sum([(i - back_mean)**2 * counts[i] for i in range(thresh, 255)])\
+                / (num_pix * back_prior)
+        else:
+            back_var = 0
+
+        within_group_vars.append(obj_var * obj_prior + back_var * back_prior)
+    
+    index = within_group_vars.index(min(within_group_vars))
+    threshold = bins[index+1]
+
+    length = len(img)
+    width = len(img[0])
+
+    new_img = []
+    for i in range(length):
+        new_img.append([])
+        for j in range(width):
+            if img[i][j] <= threshold:
+                new_img[i].append(0)
+            else:
+                new_img[i].append(255)
+    return new_img
+
+# Uses Minkowski addition to add pixels in a binarized image
+# Weights should be 0 for no addition in this pixel relative to the
+# center pixel or 1 for addition, matrix should be square
+def dilate(img, weights):
+    # use a square filter with 0 for negative (white) and 1 for positive (black)
+    length = len(img)
+    width = len(img[0])
+    mask_radius = math.floor(len(weights) / 2)
+    binary = hist_thresh(img)
+    new_img = []
+    for i in range(length):
+        new_img.append([])
+        for j in range(width):
+            new_img[i].append(255)
+
+    for i in range(length):
+        for j in range(width):
+            if binary[i][j] == 0:
+                for m in range(-mask_radius, mask_radius + 1):
+                    for n in range(-mask_radius, mask_radius + 1):
+                        if weights[m+mask_radius][n+mask_radius] == 1\
+                            and i + m >= 0 and i + m < length\
+                            and j + n > 0 and j + n < width:
+                            new_img[i+m][j+n] = 0
+
+    return new_img
+
+# The opposite of dilate(). If all of the 1s in the weight matrix are hits,
+# keep the pixel at that location, otherwise, remove it.
+def erode(img, weights):
+    # use a square filter with 0 for negative (white) and 1 for positive (black)
+    length = len(img)
+    width = len(img[0])
+    mask_radius = math.floor(len(weights) / 2)
+    binary = hist_thresh(img)
+    new_img = []
+
+    for i in range(length):
+        new_img.append([])
+        for j in range(width):
+            new_img[i].append(255)
+
+    for i in range(length):
+        for j in range(width):
+            present = True
+            for m in range(-mask_radius, mask_radius + 1):
+                for n in range(-mask_radius, mask_radius + 1):
+                    if weights[m+mask_radius][n+mask_radius] == 1\
+                        and i + m >= 0 and i + m < length\
+                        and j + n > 0 and j + n < width:
+                        if binary[i+m][j+n] != 0:
+                            present = False
+                            break
+                if not present:
+                    break
+            if present:    
+                new_img[i][j] = 0
+
+    return new_img
+
+# Essentially quantization with the bins decided by K-means clusters
+def k_means_quantize(img, k, iter=10):
+    length = len(img)
+    width = len(img[0])
+
+    intensity = random.sample(range(256), k)
+    centroids = [i for i in intensity]
+
+    new_img = [[0 for _ in range(width)] for _ in range(length)]
+
+    for _ in range(iter):
+        # sums keeps track of the sum for [x, y, intensity] for each centroid
+        # counts is number of points assigned to each centroid
+        sums = [0 for _ in range(k)]
+        counts = [0 for _ in range(k)]
+
+        for i in range(length):
+            for j in range(width):
+                cent_dist = 9999999999999
+                closest = 0
+
+                for m in range(k):
+                    int_dist = centroids[m] - img[i][j]
+                    dist = math.sqrt(int_dist**2)
+
+                    if dist < cent_dist:
+                        cent_dist = dist
+                        closest = m
+                
+                # assign pixels to centroids and update stats for cluster centroids
+                new_img[i][j] = closest
+                sums[closest] += img[i][j]
+                counts[closest] += 1
+            
+        # move centroids to avg of assigned pixels
+        for m in range(k):
+            if counts[m] != 0:
+                centroids[m] = sums[m] / counts[m]
+
+    colors = list(range(0, 255, round(255/k)))
+    for i in range(length):
+        for j in range(width):
+            new_img[i][j] = colors[new_img[i][j]]
+
+    return new_img
+
+# K-means clustering with distance to centroid as a feature
+# Distance weight is best left <= .5, but you can make it 1
+# to consider it equally.
+def k_means_dist(img, k, iter=10, dist_weight=.25):
+    length = len(img)
+    width = len(img[0])
+    avg_dim = (width + length) / 2
+
+    ii = random.sample(range(length), k)
+    jj = random.sample(range(width), k)
+    intensity = random.sample(range(256), k)
+    centroids = [[i, j, inten] for i, j, inten in zip(ii, jj, intensity)]
+
+    new_img = [[0 for _ in range(width)] for _ in range(length)]
+
+    for _ in range(iter):
+        # sums keeps track of the sum for [x, y, intensity] for each centroid
+        # counts is number of points assigned to each centroid
+        sums = [[0, 0, 0] for _ in range(k)]
+        counts = [0 for _ in range(k)]
+
+        for i in range(length):
+            for j in range(width):
+                cent_dist = 9999999999999
+                closest = 0
+
+                for m in range(k):
+                    i_dist = centroids[m][0] - i
+                    j_dist = centroids[m][1] - j
+                    int_dist = centroids[m][2] - img[i][j]
+
+                    # intensity is scaled by the avg of the dimensions, distances can be
+                    # scaled by dist_weight
+                    dist = math.sqrt((i_dist * dist_weight)**2 + (j_dist * dist_weight)**2\
+                        + (int_dist * avg_dim / 255)**2)
+
+                    if dist < cent_dist:
+                        cent_dist = dist
+                        closest = m
+                
+                # assign pixels to centroids and update stats for cluster centroids
+                new_img[i][j] = closest
+                sums[closest][0] += i
+                sums[closest][1] += j
+                sums[closest][2] += img[i][j]
+                counts[closest] += 1
+            
+        # move centroids to avg of assigned pixels
+        for m in range(k):
+            if counts[m] != 0:
+                centroids[m][0] = sums[m][0] / counts[m]
+                centroids[m][1] = sums[m][1] / counts[m]
+                centroids[m][2] = sums[m][2] / counts[m]
+
+    colors = list(range(0, 255, round(255/k)))
+    for i in range(length):
+        for j in range(width):
+            new_img[i][j] = colors[new_img[i][j]]
+
+    return new_img
+
+# DBSCAN clustering of an image using intensity and distance. Very slow!
+# I have found the optimal relation of min_obj to radius is
+# min_obj = .2 * radius**2 * 3.1
+# Decrease radius (and min_obj) to expedite
+def dbscan(img, radius=10, min_obj=60):
+    length = len(img)
+    width = len(img[0])
+    avg_dim = (length + width) / 2
+
+    new_img = [[0 for _ in range(width)] for _ in range(length)]
+
+    cores = []
+    for i in range(length):
+        for j in range(width):
+            n_nearby = 0
+            nearby = []
+            # searching within a circle within a square - there's probably a better way to do this
+            for m in range(-radius, radius):
+                for n in range(-radius, radius):
+                    if i + m >= 0 and j + n >= 0 and i + m < length and j + n < width:
+                        # scale the intensity distance to image dimensions
+                        int_dist = (img[i][j] - img[i+m][j+n]) * avg_dim / 255
+                        if math.sqrt(m**2 + n**2 + int_dist**2) <= radius:
+                            n_nearby += 1
+                            nearby.append([i + m, j + n])
+                            new_img[i+m][j+n] = -1
+
+            if n_nearby >= min_obj:
+                cores.append({"loc": [i, j], "neighbors": nearby})
+                new_img[i][j] = -1
+
+    clusters = {}
+    cluster_serial = 0
+    for core in cores:
+        # 0 for the pixel value will stand in for "background", 1, 2, 3, etc. will be cluster #s
+        # if we find a background core, make it the start of a new cluster
+        i = core["loc"][0]
+        j = core["loc"][1]
+        if new_img[i][j] == -1:
+            new_img[i][j] = cluster_serial
+            clusters[str(cluster_serial)] = [[i, j]]
+            cluster_serial += 1
+        # go through the neighbors of the core and add them to the core's cluster if they are background
+        for point in core["neighbors"]:
+            m = point[0]
+            n = point[1]
+            if new_img[m][n] == -1:
+                new_img[m][n] = new_img[i][j]
+                clusters[str(new_img[i][j])].append([m, n])
+
+            # if we find a point belonging to a different cluster, add this cluster to that one
+            elif new_img[m][n] != new_img[i][j]:
+                temp = str(new_img[i][j])
+                for nb in clusters[str(new_img[i][j])]:
+                    new_img[nb[0]][nb[1]] = new_img[m][n]
+
+                clusters[str(new_img[m][n])].extend(clusters[temp])
+                clusters.pop(temp)
+    if cluster_serial > 0:
+        step = 255/len(clusters)
+        colors = list(arange(step, 255 + step, step))
+        cluster_keys = list(clusters.keys())
+        for i in range(length):
+            for j in range(width):
+                if new_img[i][j] == -1:
+                    new_img[i][j] = 0
+                else:
+                    cluster_index = cluster_keys.index(str(new_img[i][j]))
+                    new_img[i][j] = colors[cluster_index]
+
+    return new_img, len(clusters)
