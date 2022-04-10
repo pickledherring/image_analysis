@@ -659,4 +659,4 @@ def dbscan(img, radius=10, min_obj=60):
                     cluster_index = cluster_keys.index(str(new_img[i][j]))
                     new_img[i][j] = colors[cluster_index]
 
-    return new_img, len(clusters)
+    return new_img

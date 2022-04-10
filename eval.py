@@ -11,21 +11,21 @@ dilate_erode_weights = [[1, 1, 1],
                         [1, 1, 1]]
 
 funcs_list = [
-    [[[edge_operator, {}]], "edge operator"],
-    [[[hist_thresh, {}]], "histogram thresholding"],
-    [[[dilate, {"weights": dilate_erode_weights}]], "dilation"],
-    [[[erode, {"weights": dilate_erode_weights}]], "erosion"],
-    [[[k_means_quantize, {"k": 2}]], "K-means on intensity, k = 2"],
-    [[[k_means_quantize, {"k": 3}]], "K-means on intensity, k = 3"],
-    [[[k_means_quantize, {"k": 4}]], "K-means on intensity, k = 4"],
-    [[[k_means_quantize, {"k": 5}]], "K-means on intensity, k = 5"],
-    [[[k_means_quantize, {"k": 6}]], "K-means on intensity, k = 6"],
+    # [[[edge_operator, {}]], "edge operator"],
+    # [[[hist_thresh, {}]], "histogram thresholding"],
+    # [[[dilate, {"weights": dilate_erode_weights}]], "dilation"],
+    # [[[erode, {"weights": dilate_erode_weights}]], "erosion"],
+    # [[[k_means_quantize, {"k": 2}]], "K-means on intensity, k = 2"],
+    # [[[k_means_quantize, {"k": 3}]], "K-means on intensity, k = 3"],
+    # [[[k_means_quantize, {"k": 4}]], "K-means on intensity, k = 4"],
+    # [[[k_means_quantize, {"k": 5}]], "K-means on intensity, k = 5"],
+    # [[[k_means_quantize, {"k": 6}]], "K-means on intensity, k = 6"],
     [[[k_means_dist, {"k": 2}]], "K-means with distance, k = 2"],
     [[[k_means_dist, {"k": 3}]], "K-means with distance, k = 3"],
     [[[k_means_dist, {"k": 4}]], "K-means with distance, k = 4"],
-    [[[k_means_dist, {"k": 5}]], "K-means with distance, k = 5"],
-    [[[k_means_dist, {"k": 6}]], "K-means with distance, k = 6"],
-    [[[dbscan, {}]], "DBSCAN"]
+    # [[[k_means_dist, {"k": 5}]], "K-means with distance, k = 5"],
+    # [[[k_means_dist, {"k": 6}]], "K-means with distance, k = 6"],
+    # [[[dbscan, {"radius": 7, "min_obj": 30, "abbr": "para"}]], "DBSCAN"]
     ]
 
 # [[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
