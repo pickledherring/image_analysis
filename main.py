@@ -659,6 +659,7 @@ def dbscan(img, radius=10, min_obj=60):
                     cluster_index = cluster_keys.index(str(new_img[i][j]))
                     new_img[i][j] = colors[cluster_index]
 
+<<<<<<< HEAD
     return new_img
 
 dilate_erode_weights = [[1, 1, 1, 1, 1],
@@ -671,3 +672,8 @@ abbrs = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
 for abbr in abbrs:
     to_image(edge_operator(open_in_gray(f"Cancerous cell smears/{abbr}01.BMP"), sharpen_thresh=5),
         save_loc=f"outputs/{abbr}_sharp.png")
+||||||| merged common ancestors
+    return new_img, len(clusters)
+=======
+    return new_img
+>>>>>>> 42276c6de7a91d00030a90a7f9e98a0ababa3adc

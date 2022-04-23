@@ -12,13 +12,6 @@ abbr = "inter"
 batch_process(file_location, functions, abbr=abbr,
                 save_loc=output_folder, verbose=verbose)
 
-# gaussian blurring matrix for convenience
-blur = [[1, 4, 6, 4, 1],
-        [4, 16, 24, 16, 4],
-        [6, 24, 36, 24, 6],
-        [4, 16, 24, 16, 4],
-        [1, 4, 6, 4, 1]]
-
 # You can edit the file location, functions (and associated arguments)
 # and output location, verbose, and abbr if desired.
 
@@ -76,8 +69,38 @@ blur = [[1, 4, 6, 4, 1],
 # average linear filter:
 #     name: "avg_linear_filter"
 #     parameters: "weights" => 2D matrix like below
-#     example use: [avg_linear_filter, {"weights": blur}]
+#     example use: [avg_linear_filter, {"weights": gaussian_3x3}]
 # median linear filter:
 #     name: "med_linear_filter"
 #     parameters: "weights" => 2D matrix like below
-#     example use: [med_linear_filter, {"weights": blur}]
+#     example use: [med_linear_filter, {"weights": gaussian_3x3}]
+# edge detector:
+#     name: "edge_operator"
+#     parameters: "type" => "Prewitt", "Sobel", "Jahne"
+#     example use: [edge_operator, {"type": "Prewitt"}]
+# histogram thresholding:
+#     name: "hist_thresh"
+#     parameters: none
+#     example use: [hist_thresh, {}]
+# dilation:
+#     name: "dilate"
+#     parameters: "weights" => 2D matrix of 0s and 1s
+#     example use: [dilate, {"weights": dilate_erode_weights}]
+# erosion:
+#     name: "erode"
+#     parameters: "weights" => 2D matrix of 0s and 1s
+#     example use: [erode, {"weights": dilate_erode_weights}]
+# K-means quantization:
+#     name: "k_means_quantize"
+#     parameters: "k" => [2, 255] (<10 recommended)
+#     example use: [k_means_quantize, {"k": 2}]
+# K-means with distance:
+#     name: "k_means_dist"
+#     parameters: "k" => [2, 255] (<10 recommended)
+#     example use: [k_means_dist, {"k": 2}]
+# DBSCAN:
+#     name: "dbscan"
+#     parameters:
+#         "radius" => [2, inf] (<10 recommended)
+#         "min_obj" => [0, radius**2 * 3.14] (.2 * upper bound recommended)
+#     example use: [dbscan, {"radius": 7, "min_obj": 30}]

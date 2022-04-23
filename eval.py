@@ -6,9 +6,11 @@
 import time
 from main import *
 
-dilate_erode_weights = [[1, 1, 1],
-                        [1, 1, 1],
-                        [1, 1, 1]]
+dilate_erode_weights = [[1, 1, 1, 1, 1],
+                        [1, 1, 1, 1, 1],
+                        [1, 1, 1, 1, 1],
+                        [1, 1, 1, 1, 1],
+                        [1, 1, 1, 1, 1]]
 
 funcs_list = [
     [[[edge_operator, {}]], "edge operator"],
@@ -18,14 +20,10 @@ funcs_list = [
     [[[k_means_quantize, {"k": 2}]], "K-means on intensity, k = 2"],
     [[[k_means_quantize, {"k": 3}]], "K-means on intensity, k = 3"],
     [[[k_means_quantize, {"k": 4}]], "K-means on intensity, k = 4"],
-    [[[k_means_quantize, {"k": 5}]], "K-means on intensity, k = 5"],
-    [[[k_means_quantize, {"k": 6}]], "K-means on intensity, k = 6"],
     [[[k_means_dist, {"k": 2}]], "K-means with distance, k = 2"],
     [[[k_means_dist, {"k": 3}]], "K-means with distance, k = 3"],
     [[[k_means_dist, {"k": 4}]], "K-means with distance, k = 4"],
-    [[[k_means_dist, {"k": 5}]], "K-means with distance, k = 5"],
-    [[[k_means_dist, {"k": 6}]], "K-means with distance, k = 6"],
-    [[[dbscan, {}]], "DBSCAN"]
+    [[[dbscan, {"radius": 7, "min_obj": 30}]], "DBSCAN"]
     ]
 
 # [[[salt_n_pepper, {"prob": .05}]], "salt and pepper noise addition"],
@@ -34,8 +32,8 @@ funcs_list = [
 # [[[hist, {}]], "histogram"],
 # [[[hist_eq, {}]], "histogram equalization"],
 # [[[quantizer, {"num_levels": 20}]], "quantizing"],
-# [[[avg_linear_filter, {"weights": blurring}]], "average linear filter"],
-# [[[med_linear_filter, {"weights": blurring}]], "median linear filter"]
+# [[[avg_linear_filter, {"weights": gauss_5x5}]], "average linear filter"],
+# [[[med_linear_filter, {"weights": gauss_5x5}]], "median linear filter"]
 
 for func in funcs_list:
     print(func[1], ":")
