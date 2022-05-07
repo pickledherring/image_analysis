@@ -32,6 +32,7 @@ def salt_n_pepper(img, prob):
     return new_img
     
 def gaussian_noise(img, mu=0, sigma=1):
+    # mu can be [0, 255], sigma can be >= 0
     new_img = []
     for i in range(len(img)):
         new_img.append([])
@@ -667,7 +668,7 @@ dilate_erode_weights = [[1, 1, 1, 1, 1],
                         [1, 1, 1, 1, 1],
                         [1, 1, 1, 1, 1]]
 
-abbrs = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
-for abbr in abbrs:
-    to_image(edge_operator(open_in_gray(f"Cancerous cell smears/{abbr}01.BMP"), sharpen_thresh=5),
-        save_loc=f"outputs/{abbr}_sharp.png")
+# abbrs = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
+# for abbr in abbrs:
+#     to_image(edge_operator(open_in_gray(f"Cancerous cell smears/{abbr}01.BMP"), sharpen_thresh=5),
+        # save_loc=f"outputs/{abbr}_sharp.png")
