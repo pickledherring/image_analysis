@@ -874,7 +874,6 @@ def get_centroid(img):
     return [flip_sum_ix / area, flip_sum_jx / area]
 
 def cent_moment(img, com, p, q):
-    # not entirely sure this is correct
     height = len(img)
     width = len(img[0])
     summed = 0
@@ -914,14 +913,21 @@ def get_feats(img):
     # print("image cleaned, clustering (will take a while)")
 
     # get object clusters (pixel locations) from image
-    clusters = dbscan_seg(clean)
+    clusters = dbscan_seg(clean, radius=7, min_obj=30)
     # print("done clustering! extracting cells and features")
-    
+
+    # somewhat subjectively cut off small clusters
+    for cluster_k in clusters.keys():
+        num_points = len(clusters[cluster_k])
+        if num_points < 200:
+            clusters.pop(cluster_k)
+
     # get the background cluster out of there
     avg_intensities = []
     keys = []
     for cluster_k in clusters.keys():
         num_points = len(clusters[cluster_k])
+        
         sum_intensity = 0
         for i in range(num_points):
             j = clusters[cluster_k][i][0]
@@ -973,25 +979,33 @@ def get_feats(img):
         # save_loc=f"outputs/{abbr}_sharp.png")
 
 # make a csv, takes several hours
-with open("cell_data.csv", 'w') as f:
+paths = glob.glob(f"Cancerous cell smears/*")
+data = []
+# sum_n_feats = 0
+for index, path in enumerate(paths[:250:5]):
+    start = time.time()
+    img = open_in_gray(path)
+    feats = get_feats(img)
+    sum_n_feats = len(feats[1])
+    diff = time.time() - start
+    # if index % 1 == 0:
+    print(f"processed {index} images, avg n feats: {sum_n_feats}, time: {diff}")
+    for i in range(len(feats[1])):
+        values = []
+        # returning multiple objects per feature, need to invert order
+        for j in range(len(feats)):
+            values.append(feats[j][i])
+        # add class based on file name
+        values.append(search('/\D*', path).group(0)[1:])
+    data.append(values)
+
+with open("cells.csv", 'w') as f:
     cells_writer = csv.writer(f)
     cells_writer.writerow(['area', 'bbox', 'com', 'perimeter', 'centroid', 'cm_11',
                             'cm_20', 'cm_02', 'orientation', 'class'])
     
-    paths = glob.glob(f"Cancerous cell smears/*")
-    for index, path in enumerate(paths):
-        if index % 5 == 0:
-            print(f"processed {index} images")
-        img = open_in_gray(path)
-        feats = get_feats(img)
-        for i in range(len(feats[1])):
-            values = []
-            # returning multiple objects per feature, need to invert order
-            for j in range(len(feats)):
-                values.append(feats[j][i])
-            # add class based on file name
-            values.append(search('/\D*', path).group(0)[1:])
-            cells_writer.writerow(values)
+    for row in data:
+        cells_writer.writerow(data)
 
 
 
