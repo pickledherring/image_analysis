@@ -917,10 +917,14 @@ def get_feats(img):
     # print("done clustering! extracting cells and features")
 
     # somewhat subjectively cut off small clusters
+    to_pop = []
     for cluster_k in clusters.keys():
         num_points = len(clusters[cluster_k])
         if num_points < 200:
-            clusters.pop(cluster_k)
+            to_pop.append(cluster_k)
+    
+    for key in to_pop:
+        clusters.pop(key)
 
     # get the background cluster out of there
     avg_intensities = []
