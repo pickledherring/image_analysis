@@ -977,41 +977,159 @@ def get_feats(img):
     return (areas, bboxs, coms, perimeters, centroids, cms_11,
     cms_20, cms_02, orientations)
 
-# abbrs = ["cyl", "para", "inter", "super", "let", "mod", "svar"]
-# for abbr in abbrs:
-#     to_image(edge_operator(open_in_gray(f"Cancerous cell smears/{abbr}01.BMP"), sharpen_thresh=5),
-        # save_loc=f"outputs/{abbr}_sharp.png")
+def min_max_normalize(data, bounds = [0, 1]):
+    num_feats = len(data[0])
+    maxes = [data[0][i] for i in range(num_feats)]
+    mins = [data[0][i] for i in range(num_feats)]
+    for row in data:
+        for col in range(num_feats):
+            if row[col] > maxes[col]:
+                maxes[col] = row[col]
+            
+            if row[col] < mins[col]:
+                mins[col] = row[col]
+
+    new_data = []
+    for i, row in enumerate(data):
+        new_data.append([])
+        for j in range(num_feats):
+            curr_range = maxes[j] - mins[j]
+            new_range = bounds[1] - bounds[0]
+            value = ((row[j] - mins[j]) / curr_range) * new_range + bounds[0]
+            new_data[i].append(value)
+
+    return new_data
+
+class KNN_Classifier():
+    def __init__(self, k):
+        self.k = k
+    
+    def fit(self, X, y):
+        self.X = X
+        self.y = y
+
+    def predict(self, X_pred):
+        num_feats = len(self.X[0])
+    
+        preds = []
+        for x in X_pred:
+            # k_distances: [distance, index]
+            k_distances = [[100000000, i] for i in range(self.k)]
+            for i in range(len(self.X)):
+                # find euclidean distance
+                sq_diffs = [(x[j] - self.X[i][j])**2 for j in range(num_feats)]
+                dist = math.sqrt(sum(sq_diffs))
+                # compare to current neighbors
+                for k in range(len(k_distances)):
+                    if dist < k_distances[k][0]:
+                        # shift up farther objects in the list
+                        for k_r in range(len(k_distances) - 1, k, -1):
+                            k_distances[k_r][0] = k_distances[k_r-1][0]
+                            k_distances[k_r][1] = k_distances[k_r-1][1]
+                        k_distances[k][0] = dist
+                        k_distances[k][1] = i
+            # evaluate final nearest neighbors            
+            classes = {}
+            for nn in k_distances:
+                if str(self.y[nn[1]]) in classes.keys():
+                    classes[str(self.y[nn[1]])] += 1
+                else:
+                    classes[str(self.y[nn[1]])] = 1
+
+            # find first mode of the neighbors' classes
+            max_class = str(self.y[k_distances[0][1]])
+            max_value = classes[max_class]
+            for key in classes.keys():
+                if classes[key] > max_value:
+                    max_class = key
+                    max_value = classes[max_class]
+                
+            preds.append(max_class)
+
+        return preds
 
 # make a csv, takes several hours
-paths = glob.glob(f"Cancerous cell smears/*")
-data = []
-# sum_n_feats = 0
-for index, path in enumerate(paths[:250:5]):
-    start = time.time()
-    img = open_in_gray(path)
-    feats = get_feats(img)
-    sum_n_feats = len(feats[1])
-    diff = time.time() - start
-    # if index % 1 == 0:
-    print(f"processed {index} images, avg n feats: {sum_n_feats}, time: {diff}")
-    for i in range(len(feats[1])):
-        values = []
-        # returning multiple objects per feature, need to invert order
-        for j in range(len(feats)):
-            values.append(feats[j][i])
-        # add class based on file name
-        values.append(search('/\D*', path).group(0)[1:])
-    data.append(values)
+# paths = glob.glob(f"Cancerous cell smears/*")
+# data = []
+# # sum_n_feats = 0
+# for index, path in enumerate(paths[::5]):
+#     start = time.time()
+#     img = open_in_gray(path)
+#     feats = get_feats(img)
+#     n_clusters = len(feats[1])
+#     diff = time.time() - start
+#     # if index % 1 == 0:
+#     print(f"processed {index} images, n clusters: {n_clusters}, time: {diff}")
+#     for i in range(n_clusters):
+#         values = []
+#         # returning multiple objects per feature, need to invert order
+#         for j in range(len(feats)):
+#             values.append(feats[j][i])
+#         # add class based on file name
+#         values.append(search('/\D*', path).group(0)[1:])
+#     data.append(values)
 
-with open("cells.csv", 'w') as f:
-    cells_writer = csv.writer(f)
-    cells_writer.writerow(['area', 'bbox', 'com', 'perimeter', 'centroid', 'cm_11',
-                            'cm_20', 'cm_02', 'orientation', 'class'])
+# with open("cells.csv", 'w') as f:
+#     cells_writer = csv.writer(f)
+#     cells_writer.writerow(['area', 'bbox', 'com', 'perimeter', 'centroid', 'cm_11',
+#                             'cm_20', 'cm_02', 'orientation', 'class'])
     
-    for row in data:
-        cells_writer.writerow(data)
+#     for row in data:
+#         cells_writer.writerow(data)
+
+# X = []
+# y = []
+# with open("cells.csv", "r") as f:
+#     cells_reader = csv.reader(f)
+#     headers = next(cells_reader)
+#     for i, row in enumerate(cells_reader):
+#         X.append([])
+#         for j, col in enumerate(literal_eval(row[0])):
+#             try:
+#                 if headers[j] == "com" or headers[j] == "centroid":
+#                     X[i].append(col[0])
+#                     X[i].append(col[1])
+#                 elif headers[j] == "bbox":
+#                     continue
+#                 elif headers[j] == "class":
+#                     y.append(col)
+#                 else:
+#                     X[i].append(col)
+#             except:
+#                 print(col)
+
+# X_scaled = min_max_normalize(X)
+
+# for config in range(5):
+#     num_objs = len(X_scaled)
+#     shuffled = list(range(num_objs))
+#     random.shuffle(shuffled)
+#     k_arg = 2 * config + 1
+#     knn = KNN_Classifier(k_arg)
+
+#     accs = []
+#     for i in range(10):
+#         x_train = []
+#         y_train = []
+
+#         for x in range(10):
+#             left = math.floor(num_objs * x / 10)
+#             right = math.ceil(num_objs * (x + 1) / 10)
+#             if i == x:
+#                 test_indices = shuffled[left:right]
+#                 x_test = [X_scaled[i] for i in test_indices]
+#                 y_test = [y[i] for i in test_indices]
+
+#             else:
+#                 train_indices = shuffled[left:right]
+#                 x_train = x_train + [X_scaled[i] for i in train_indices]
+#                 y_train = y_train + [y[i] for i in train_indices]
 
 
-
-
-
+#         width = math.floor(num_objs / 10)
+#         knn.fit(x_train, y_train)
+#         preds = knn.predict(x_test)
+#         accs.append(sum([preds[j] == y_test[j] for j in range(width)]) / width)
+#     mean_acc = sum(accs) / len(accs)
+#     acc_var = sum([(acc - mean_acc)**2 for acc in accs]) / len(accs)
+#     print(f"k: {k_arg}, mean accuracy: {round(mean_acc, 3)}, variance: {round(acc_var, 5)}")
