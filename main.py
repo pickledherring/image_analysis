@@ -6,6 +6,7 @@ import random
 import copy
 import csv
 import time
+from ast import literal_eval
 from re import search
 from numpy import arange, ravel, array
 from PIL import Image, ImageFile
@@ -1094,9 +1095,10 @@ with open("cells.csv", 'w') as f:
 #     headers = next(cells_reader)
 #     for i, row in enumerate(cells_reader):
 #         X.append([])
-#         for j, col in enumerate(literal_eval(row[0])):
+#         for j, col in enumerate(row):
 #             try:
 #                 if headers[j] == "com" or headers[j] == "centroid":
+#                     col = literal_eval(col)
 #                     X[i].append(col[0])
 #                     X[i].append(col[1])
 #                 elif headers[j] == "bbox":
@@ -1104,6 +1106,7 @@ with open("cells.csv", 'w') as f:
 #                 elif headers[j] == "class":
 #                     y.append(col)
 #                 else:
+#                     col = literal_eval(col)
 #                     X[i].append(col)
 #             except:
 #                 print(col)
