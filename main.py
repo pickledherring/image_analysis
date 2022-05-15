@@ -910,38 +910,42 @@ def get_feats(img):
 
     # make the largest cluster, probably the background, white so dbscan_seg will ignore it
     clean = make_bgnd_white_arrayify(clean)
-    # print("image cleaned, clustering (will take a while)")
 
     # get object clusters (pixel locations) from image
-    clusters = dbscan_seg(clean, radius=7, min_obj=30)
-    # print("done clustering! extracting cells and features")
-
-    # somewhat subjectively cut off small clusters
+    clusters = dbscan_seg(clean, radius = 7, min_obj=30)
+    
+    if len(clusters.keys()) == 0:
+        return None
+        
+    # somewhat subjectively cut off small and large clusters
     to_pop = []
     for cluster_k in clusters.keys():
         num_points = len(clusters[cluster_k])
-        if num_points < 200:
+        if num_points < 200 or num_points > 300000:
             to_pop.append(cluster_k)
     
+    # print("to pop", *zip(clusters.keys(), [len(clusters[key]) for key in to_pop]))
     for key in to_pop:
         clusters.pop(key)
 
     # get the background cluster out of there
-    avg_intensities = []
-    keys = []
-    for cluster_k in clusters.keys():
-        num_points = len(clusters[cluster_k])
-        
-        sum_intensity = 0
-        for i in range(num_points):
-            j = clusters[cluster_k][i][0]
-            k = clusters[cluster_k][i][1]
-            sum_intensity += clean[j][k]
-        avg_intensities.append(sum_intensity / num_points)
-        keys.append((cluster_k))
+    if len(clusters.keys()) > 1:
+        avg_intensities = []
+        keys = []
+        for cluster_k in clusters.keys():
+            num_points = len(clusters[cluster_k])
+            sum_intensity = 0
+            for i in range(num_points):
+                j = clusters[cluster_k][i][0]
+                k = clusters[cluster_k][i][1]
+                sum_intensity += clean[j][k]
+            avg_intensities.append(sum_intensity / num_points)
+            keys.append((cluster_k))
 
-    max_index = avg_intensities.index(max(avg_intensities))
-    clusters.pop(keys[max_index])
+        max_index = avg_intensities.index(max(avg_intensities))
+        clusters.pop(keys[max_index])
+    else:
+        print("single cluster for image, may be background")
 
     # start retrieving features
     areas, bboxs, coms = get_area_bbox_com(clusters)
@@ -1049,33 +1053,39 @@ class KNN_Classifier():
         return preds
 
 # make a csv, takes several hours
-# paths = glob.glob(f"Cancerous cell smears/*")
-# data = []
-# # sum_n_feats = 0
-# for index, path in enumerate(paths[::5]):
-#     start = time.time()
-#     img = open_in_gray(path)
-#     feats = get_feats(img)
-#     n_clusters = len(feats[1])
-#     diff = time.time() - start
-#     # if index % 1 == 0:
-#     print(f"processed {index} images, n clusters: {n_clusters}, time: {diff}")
-#     for i in range(n_clusters):
-#         values = []
-#         # returning multiple objects per feature, need to invert order
-#         for j in range(len(feats)):
-#             values.append(feats[j][i])
-#         # add class based on file name
-#         values.append(search('/\D*', path).group(0)[1:])
-#     data.append(values)
-
-# with open("cells.csv", 'w') as f:
-#     cells_writer = csv.writer(f)
-#     cells_writer.writerow(['area', 'bbox', 'com', 'perimeter', 'centroid', 'cm_11',
-#                             'cm_20', 'cm_02', 'orientation', 'class'])
+with open("cells.csv", 'w') as f:
+    cells_writer = csv.writer(f)
+    # cells_writer.writerow(['area', 'bbox', 'com', 'perimeter', 'centroid', 'cm_11',
+                            # 'cm_20', 'cm_02', 'orientation', 'class'])
     
-#     for row in data:
-#         cells_writer.writerow(data)
+    paths = glob.glob(f"Cancerous cell smears/*")
+    for index, path in enumerate(paths):
+        start = time.time()
+        img = open_in_gray(path)
+        feats = get_feats(img)
+                
+        if feats:
+            # check raggedness
+            if any([len(feat) == 0 or len(feat) != len(feats[0]) for feat in feats]):
+                print(f"ragged or empty feature array from image {path}, skipping")
+                continue
+
+            # print("feats\n", feats)
+            for i in range(len(feats[1])):
+                values = []
+                # returning multiple objects per feature, need to invert order
+                for j in range(len(feats)):
+                    values.append(feats[j][i])
+                    # print(f"\tfeats[{j}][{i}]", feats[j][i])
+                # add class based on file name
+                values.append(search('/\D*', path).group(0)[1:])
+                print("row to write", values, "\n")
+                cells_writer.writerow(values)
+        else:
+            print(f"no clusters from image {path}")
+            continue
+        diff = time.time() - start
+        print(f"processed {index + 1} images, last ({path}) in {diff} seconds")
 
 # X = []
 # y = []
