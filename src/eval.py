@@ -4,7 +4,7 @@
 # * MSQE for image quantization levels 
 
 import time
-from main import *
+from src.main import *
 
 dilate_erode_weights = [[1, 1, 1, 1, 1],
                         [1, 1, 1, 1, 1],

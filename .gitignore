@@ -1,3 +1,5 @@
+tests\test_imgs\fuzz_color.png
+
 *~
 __pycache__
 .pytest_cache
@@ -40,26 +42,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-
-# Cursive Clojure plugin
-.idea/replstate.xml
-
-# Crashlytics plugin (for Android Studio and IntelliJ)
-com_crashlytics_export_strings.xml
-crashlytics.properties
-crashlytics-build.properties
-fabric.properties
-
-### PyCharm Patch ###
-# Comment Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-215987721
-
-# *.iml
-# modules.xml
-# .idea/misc.xml
-# *.ipr
-
-# Sonarlint plugin
-.idea/sonarlint
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -111,8 +93,6 @@ coverage.xml
 
 # Translations
 *.mo
-
-# Django stuff:
 
 # Flask stuff:
 instance/

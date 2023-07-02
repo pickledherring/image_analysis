@@ -1,5 +1,5 @@
 from numpy import random
-import main
+import src.main as main
 from PIL import Image
 
 black_img = Image.new("RGB", (20, 20))

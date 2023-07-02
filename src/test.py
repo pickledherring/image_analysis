@@ -1,4 +1,4 @@
-from main import *
+from src.main import *
 from ast import literal_eval
 
 data = []

@@ -1,4 +1,4 @@
-from main import *
+from src.main import *
 
 ##### EDIT BELOW #####
 file_location = "Cancerous cell smears"
