@@ -1,4 +1,4 @@
-from quantization import hist_thresh
+from .quantization import hist_thresh
 import math
 
 # Uses Minkowski addition to add pixels in a binarized image

@@ -1,4 +1,5 @@
-from numpy import random, arange
+from numpy import arange
+import random
 import math
 
 

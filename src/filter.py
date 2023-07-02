@@ -1,4 +1,4 @@
-from numpy import random
+import random
 import math
 from .modify_bounds import ext_bounds
 
