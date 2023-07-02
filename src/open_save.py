@@ -1,6 +1,5 @@
 from PIL import Image
-import random
-from colorscale import grayscale
+from .colorscale import grayscale
 
 
 # open_in_gray is the only function to open an image as all other functions

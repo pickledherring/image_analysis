@@ -1,8 +1,8 @@
 from numpy import ravel, array
 import math
-from minkowski import dilate, erode
-from cluster import k_means_quantize, dbscan_seg
-from modify_bounds import pad
+from .minkowski import dilate, erode
+from .cluster import k_means_quantize, dbscan_seg
+from .modify_bounds import pad
 
 def get_perimeter(seg_img):
     cross_weights = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]

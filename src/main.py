@@ -99,7 +99,7 @@ with open("cells.csv", 'w') as f:
                     values.append(feats[j][i])
                     # print(f"\tfeats[{j}][{i}]", feats[j][i])
                 # add class based on file name
-                values.append(search('/\D*', path).group(0)[1:])
+                values.append(search(r'/\D*', path).group(0)[1:])
                 print("row to write", values, "\n")
                 cells_writer.writerow(values)
         else:

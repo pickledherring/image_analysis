@@ -1,9 +1,10 @@
-# for CSMC 525 Software, Analysis, Testing, and Verification
-
-from ..src.main import *
 import pytest
 from numpy import random
 from PIL import Image
+from ..src.open_save import open_in_gray
+from ..src.filter import salt_n_pepper, gaussian_noise
+from ..src.hist import hist
+from ..src.quantization import hist_eq
 
 @pytest.fixture
 def fuzz_img_color():
