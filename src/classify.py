@@ -1,4 +1,13 @@
 import math
+import torch
+import numpy as np
+import glob
+import os
+from re import search
+from .open_save import open_in_gray
+from torch.utils.data import Dataset, random_split
+from torch import nn
+import torch.nn.functional as F
 
 class KNN_Classifier():
     def __init__(self, k):
@@ -47,3 +56,146 @@ class KNN_Classifier():
             preds.append(max_class)
 
         return preds
+    
+class Cancer_Dataset(Dataset):
+    def __init__(self, img_dir, transform=None, target_transform=None):
+        self.img_dir = img_dir
+        self.transform = transform
+        self.target_transform = target_transform
+        self.img_labels = []
+        # take all images from directory
+        paths = glob.glob(f"{img_dir}/*")
+        for _, path in enumerate(paths):
+            name = search(r'smears.\D*', path).group(0)[7:]
+            match name:
+                case "cyl":
+                    name_index = 0
+                    # columnar epithelial?
+                case "para":
+                    name_index = 1
+                    # parabasal squamous epithelial
+                case "inter":
+                    name_index = 2
+                    # intermediate squamous epithelial
+                case "super":
+                    name_index = 3
+                    # superficial squamous epithelial
+                case "let":
+                    name_index = 4
+                    # mild nonkeratinizing dysplastic?
+                case "mod":
+                    name_index = 5
+                    # moderate nonkeratinizing dysplastic
+                case "svar":
+                    name_index = 6
+                    # severe nonkeratinizing dysplastic?
+            
+            item = [path.split("/")[-1], name_index]
+            self.img_labels.append(item)
+        
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_dir, self.img_labels[idx][0])
+        img = open_in_gray(img_path)
+        img_tensor = torch.from_numpy(img)
+        label = self.img_labels[idx][1]
+        if self.transform:
+            img = self.transform(img)
+        if self.target_transform:
+            label = self.target_transform(label)
+        return img_tensor, label
+    
+def split_data(data_loader, train_pct):
+    train_size = int(train_pct * len(data_loader))
+    test_size = len(data_loader) - train_size
+    train_dataset, test_dataset = random_split(data_loader, [train_size, test_size])
+    return train_dataset, test_dataset
+
+class CNN(nn.Module):
+    def __init__(self): 
+        super(CNN, self).__init__()
+        
+        self.start = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5),         
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),  
+            nn.Conv2d(in_channels=6, out_channels=12, kernel_size=3),
+            nn.BatchNorm2d(num_features=12)           
+        )
+        
+        self.end = nn.Sequential(
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2)   
+        )
+        
+        self.classifier = nn.Sequential(
+            nn.Linear(12*6*6, 50),         
+            nn.Dropout(p=0.2),
+            nn.ReLU(),
+            nn.Linear(50, 7)            
+        )
+        
+    def forward(self, x):
+        x = self.start(x)
+        x = self.end(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return F.log_softmax(x)
+
+def run_cnn(train_loader, test_loader):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = CNN().to(device)
+    criterion = F.nll_loss
+    learning_rate = 0.0025
+    optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
+    batch_size = 64
+    n_epochs = 10
+    num_updates = n_epochs * int(np.ceil(len(train_loader) / batch_size))
+    warmup_steps = 1000
+    def warmup_linear(x):
+        if x < warmup_steps:
+            lr = x / warmup_steps
+        else:
+            lr = max((num_updates - x) / (num_updates - warmup_steps), 0.)
+        return lr
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, warmup_linear)
+    
+    losses = []
+    accs = []
+
+    for i in range(n_epochs):
+        for batch, (inputs, labels) in enumerate(train_loader):
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            
+            optimizer.zero_grad()
+
+            #forward phase - predictions by the model
+            outputs = model(inputs)
+            #forward phase - risk/loss for the predictions
+            loss = criterion(outputs, labels)
+    
+            # calculate gradients
+            loss.backward()
+            
+            # take the gradient step
+            optimizer.step()
+            scheduler.step()
+
+            batch_loss = loss.item()
+            
+        with (torch.no_grad()):
+            correct = 0
+            for inputs, labels in test_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                outputs = model(inputs)
+                pred = outputs.data.max(dim=1, keepdim=True)[1]
+                correct += pred.eq(labels.data.view_as(pred)).sum().item()
+            
+        losses.append(batch_loss)
+        accs.append(correct / len(test_loader.dataset))
+        print(i, batch_loss, correct / len(test_loader.dataset))
+        return (losses, accs)
