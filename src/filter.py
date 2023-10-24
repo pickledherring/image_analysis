@@ -1,6 +1,6 @@
 import random
 import math
-from .modify_bounds import ext_bounds
+from modify_bounds import ext_bounds
 
 
 gauss_3x3 = [[1, 2, 1], [2, 4, 2], [1, 2, 1]]

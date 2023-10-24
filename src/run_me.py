@@ -1,4 +1,5 @@
-from src.main import *
+from main import *
+from quantization import hist_eq
 
 ##### EDIT BELOW #####
 file_location = "Cancerous cell smears"

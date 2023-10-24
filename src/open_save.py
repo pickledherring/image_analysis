@@ -1,6 +1,6 @@
 from PIL import Image, ImageFile
 import numpy as np
-from .colorscale import grayscale
+from colorscale import grayscale
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # open_in_gray is the only function to open an image as all other functions

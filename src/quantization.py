@@ -1,5 +1,5 @@
 import math
-from .hist import hist
+from hist import hist
 
 # Histogram equalization for each image
 def hist_eq(img):

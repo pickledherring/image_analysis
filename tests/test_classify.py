@@ -12,19 +12,25 @@ import torch
 
 @pytest.fixture
 def dataset():
-    file_path = path.join("..", "Cancerous cell smears")
+    file_path = "Cancerous cell smears"
     transform = transforms.Compose(
         [transforms.ToTensor(),
          transforms.Normalize(mean=[0.406], std=[0.225])]
     )
-    target_transform = transforms.Lambda(lambda y: torch.zeros(7, dtype=torch.float).scatter_(0, torch.tensor(y), value=1))
-    data_loader = Cancer_Dataset(file_path, transform=transform, target_transform=target_transform)
-    return split_data(data_loader, .75)
+    # target_transform = transforms.Lambda(lambda y: torch.zeros(7, dtype=torch.float).scatter_(0, torch.tensor(y), value=1))
+    data_loader = Cancer_Dataset(file_path, transform=transform)
+    return split_data(data_loader)
+
+def test_dataset(dataset):
+    train, test = dataset
+    assert len(train) > 0
+    assert len(test) > 0
     
 def test_cnn(dataset):
     train_data, test_data = dataset
-    losses, accs = run_cnn(train_data, test_data)
+    losses, accs = run_cnn(train_data, test_data, n_epochs=1)
     assert len(losses) > 0
+    assert len(accs) > 0
     # X_train, X_test, y_train, y_test = data_loader.get_data()
     # assert len(X_train) == 375
     # img_gray = open_in_gray(file_path)

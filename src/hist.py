@@ -1,5 +1,5 @@
 import glob
-from .open_save import open_in_gray
+from open_save import open_in_gray
 
 # Histogram calculation for each individual image
 def hist(img, bins=255):

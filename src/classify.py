@@ -4,10 +4,9 @@ import numpy as np
 import glob
 import os
 from re import search
-from .open_save import open_in_gray
-from torch.utils.data import Dataset, random_split
+from open_save import open_in_gray
+from torch.utils.data import Dataset, random_split, DataLoader
 from torch import nn
-import torch.nn.functional as F
 
 class KNN_Classifier():
     def __init__(self, k):
@@ -89,6 +88,8 @@ class Cancer_Dataset(Dataset):
                 case "svar":
                     name_index = 6
                     # severe nonkeratinizing dysplastic?
+                case _:
+                    name_index = 0
             
             item = [path.split("/")[-1], name_index]
             self.img_labels.append(item)
@@ -107,11 +108,13 @@ class Cancer_Dataset(Dataset):
             label = self.target_transform(label)
         return img_tensor, label
     
-def split_data(data_loader, train_pct):
+def split_data(data_loader, train_pct=.75, batch_size=64):
     train_size = int(train_pct * len(data_loader))
     test_size = len(data_loader) - train_size
     train_dataset, test_dataset = random_split(data_loader, [train_size, test_size])
-    return train_dataset, test_dataset
+    train_loader = DataLoader(train_dataset, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size)
+    return train_loader, test_loader
 
 class CNN(nn.Module):
     def __init__(self): 
@@ -131,10 +134,11 @@ class CNN(nn.Module):
         )
         
         self.classifier = nn.Sequential(
-            nn.Linear(12*6*6, 50),         
+            nn.Linear(140*190*12, 64),         
             nn.Dropout(p=0.2),
             nn.ReLU(),
-            nn.Linear(50, 7)            
+            nn.Linear(64, 7),
+            nn.LogSoftmax(dim=1)
         )
         
     def forward(self, x):
@@ -142,16 +146,15 @@ class CNN(nn.Module):
         x = self.end(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        return F.log_softmax(x)
+        return x
 
-def run_cnn(train_loader, test_loader):
+def run_cnn(train_loader, test_loader, n_epochs=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CNN().to(device)
-    criterion = F.nll_loss
+    criterion = nn.NLLLoss() #TODO add weights
     learning_rate = 0.0025
     optimizer = torch.optim.Adamax(model.parameters(), lr=learning_rate)
     batch_size = 64
-    n_epochs = 10
     num_updates = n_epochs * int(np.ceil(len(train_loader) / batch_size))
     warmup_steps = 1000
     def warmup_linear(x):
@@ -162,11 +165,18 @@ def run_cnn(train_loader, test_loader):
         return lr
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, warmup_linear)
     
-    losses = []
-    accs = []
+    training_losses = []
+    training_accs = []
+    testing_losses = []
+    testing_accs = []
 
     for i in range(n_epochs):
-        for batch, (inputs, labels) in enumerate(train_loader):
+        training_loss = 0
+        training_correct = 0
+        testing_loss = 0
+        testing_correct = 0
+        for inputs, labels in train_loader:
+            inputs = inputs.unsqueeze(1)
             inputs = inputs.to(device)
             labels = labels.to(device)
             
@@ -184,18 +194,37 @@ def run_cnn(train_loader, test_loader):
             optimizer.step()
             scheduler.step()
 
-            batch_loss = loss.item()
-            
+            training_loss += loss.item()
+            pred = outputs.data.max(dim=1, keepdim=True)[1]
+            training_correct += pred.eq(labels.data.view_as(pred)).sum().item()
+
         with (torch.no_grad()):
-            correct = 0
             for inputs, labels in test_loader:
+                inputs = inputs.unsqueeze(1)
                 inputs = inputs.to(device)
                 labels = labels.to(device)
                 outputs = model(inputs)
+
+                loss = criterion(outputs, labels)
+                testing_loss += loss.item()
+
                 pred = outputs.data.max(dim=1, keepdim=True)[1]
-                correct += pred.eq(labels.data.view_as(pred)).sum().item()
-            
-        losses.append(batch_loss)
-        accs.append(correct / len(test_loader.dataset))
-        print(i, batch_loss, correct / len(test_loader.dataset))
-        return (losses, accs)
+                testing_correct += pred.eq(labels.data.view_as(pred)).sum().item()
+
+        avg_train_loss = training_loss / len(train_loader)
+        train_acc = training_correct / len(train_loader.dataset)
+        training_losses.append(avg_train_loss)
+        training_accs.append(train_acc)
+
+        avg_test_loss = testing_loss / len(test_loader)
+        test_acc = testing_correct / len(test_loader.dataset)
+        testing_losses.append(avg_test_loss)
+        testing_accs.append(test_acc)
+
+        print(f"{i}: training: loss = {avg_train_loss}")
+        print(f"\t\tacc = {train_acc}")
+        print(f"{i}testing: loss = {avg_test_loss}")
+        print(f"\t\tacc = {test_acc}")
+        #TODO better outputs
+
+    return (training_losses, training_accs, testing_losses, testing_accs)
